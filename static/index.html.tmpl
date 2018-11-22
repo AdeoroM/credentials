@@ -1,0 +1,44 @@
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="/static/style.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <div id="content">
+        <form id="form" action="/validate" method="POST">
+          <label class="centered">SING UP</label>
+          <div id="inputForm">
+            <input
+              type="text"
+              name="Email"
+              class="credentials"
+              placeholder="Email"
+              value="{{.Email}}"
+            />
+            <span>{{index .Errors "Email"}}</span>
+            <input
+              type="password"
+              name="Password"
+              class="credentials"
+              placeholder="Enter Password"
+              value="{{.Password}}"
+            />
+            <span>{{index .Errors "PasswordEqual"}} {{index .Errors "PasswordShort"}}</span>
+          </div>
+          <div id="buttonForm">
+            <input
+              id="SubmitForm"
+              name="SubmitForm"
+              type="submit"
+              value="SAVE"
+            />
+            <span>{{.Exito}}{{.BadLogin}}</span>
+          </div>
+        </form>
+
+      </div>
+      <a href="/login">Login</a>
+    </div>
+  </body>
+</html>

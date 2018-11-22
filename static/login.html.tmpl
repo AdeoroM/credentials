@@ -1,0 +1,41 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <div id="content">
+        <form id="form" action="/validate/login/ok" method="POST">
+          <label class="centered">LOGIN</label>
+          <div id="inputForm">
+            <input
+              name="Email"
+              type="text"
+              class="credentials"
+              placeholder="Email"
+              value="{{.Email}}"
+            />
+            <input
+              name="Password"
+              type="password"
+              value="{{.Password}}"
+              class="credentials"
+              placeholder="Password"
+            />
+          </div>
+          <div id="buttonForm">
+            <input
+              id="SubmitForm"
+              name="SubmitForm"
+              type="submit"
+              value="LOGIN"
+            />
+            <span>{{.BadLogin}}</span>
+          </div>
+        </form>
+      </div>
+      <a href="/signup">Signup</a>
+    </div>
+  </body>
+</html>
