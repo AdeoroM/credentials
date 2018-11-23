@@ -22,13 +22,13 @@ type User struct {
 }
 
 func main() {
-	JSONFile, err := os.Open("baseUsers.json")
+	file, err := os.Open("baseUsers.json")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer JSONFile.Close()
+	defer file.Close()
 
-	byteValue, err := ioutil.ReadAll(JSONFile)
+	byteValue, err := ioutil.ReadAll(file)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,15 +47,23 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8084", nil))
 }
 
-func CreateFormHandler(w http.ResponseWriter, r *http.Request) {
-	err := Render(w, "static/index.html.tmpl", User{})
+func Render(w http.ResponseWriter, tmpl string, information interface{}) error {
+
+	template, err := template.ParseFiles(tmpl)
 	if err != nil {
-		w.Write([]byte(err.Error()))
+		return err
 	}
+
+	err = template.Execute(w, information)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func CreateLoginHandler(w http.ResponseWriter, r *http.Request) {
-	err := Render(w, "static/login.html.tmpl", User{})
+func CreateFormHandler(w http.ResponseWriter, r *http.Request) {
+	err := Render(w, "static/index.html.tmpl", User{})
 	if err != nil {
 		w.Write([]byte(err.Error()))
 	}
@@ -92,6 +100,32 @@ func TableUsersHandler(w http.ResponseWriter, r *http.Request) {
 	Render(w, "static/list.html.tmpl", baseUser)
 }
 
+func CreateLoginHandler(w http.ResponseWriter, r *http.Request) {
+
+	err := Render(w, "static/login.html.tmpl", User{})
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
+
+}
+func ValidateLoginHandler(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseForm()
+	user := User{
+		Email:    r.Form.Get("Email"),
+		Password: r.Form.Get("Password"),
+	}
+
+	for _, savedUser := range baseUser {
+		if user.Email == savedUser.Email && user.Password == savedUser.Password {
+			w.Write([]byte("Ok"))
+			return
+		}
+	}
+	user.BadLogin = "Bad Login"
+	Render(w, "static/login.html.tmpl", user)
+}
+
 func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	email := r.URL.Query().Get("email")
@@ -108,9 +142,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	if index >= 0 {
 		baseUser = append(baseUser[:index], baseUser[index+1:]...)
-		//Update disk list
 	}
-
 	baseUserJson, err := json.Marshal(baseUser)
 	if err != nil {
 		w.Write([]byte(err.Error()))
@@ -136,6 +168,7 @@ func EditUserHandler(w http.ResponseWriter, r *http.Request) {
 	if u.Email != "" {
 		Render(w, "static/edit.html.tmpl", u)
 	}
+
 }
 
 func ChangeUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -170,36 +203,4 @@ func ChangeUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/users", http.StatusSeeOther)
 
-}
-
-func ValidateLoginHandler(w http.ResponseWriter, r *http.Request) {
-
-	r.ParseForm()
-	user := User{
-		Email:    r.Form.Get("Email"),
-		Password: r.Form.Get("Password"),
-	}
-
-	for _, savedUser := range baseUser {
-		if user.Email == savedUser.Email && user.Password == savedUser.Password {
-			w.Write([]byte("Ok"))
-			return
-		}
-	}
-	user.BadLogin = "Bad Login"
-	Render(w, "static/login.html.tmpl", user)
-}
-
-func Render(w http.ResponseWriter, tmpl string, information interface{}) error {
-	template, err := template.ParseFiles(tmpl)
-	if err != nil {
-		return err
-	}
-
-	err = template.Execute(w, information)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
