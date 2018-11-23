@@ -6,9 +6,10 @@
   <body>
     <div class="container">
       <div id="content">
-        <form id="form" action="/validate" method="POST">
-          <label class="centered">SING UP</label>
-          <div id="inputForm">
+        <form id="form" action="/users/update" method="POST">
+          <input type="hidden" name="originalEmail" value="{{.Email}}"/>
+          <label class="centered">Edit User</label>
+          <div id="inputForm">  
             <input
               type="text"
               name="Email"
@@ -16,6 +17,7 @@
               placeholder="Email"
               value="{{.Email}}"
             />
+            
             <span></span>
             <input
               type="password"
@@ -24,20 +26,20 @@
               placeholder="Enter Password"
               value="{{.Password}}"
             />
+            <span></span>
           </div>
           <div id="buttonForm">
             <input
               id="SubmitForm"
               name="SubmitForm"
               type="submit"
-              value="SAVE"
+              value="CHANGE"
             />
-            <span>{{.Exito}}{{.BadLogin}}</span>
           </div>
         </form>
 
       </div>
-      <a href="/login">Login</a>
+      <a href="/users">Users</a>
     </div>
   </body>
 </html>

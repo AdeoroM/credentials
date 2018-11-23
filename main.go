@@ -1,72 +1,59 @@
 package main
 
 import (
+	"encoding/json"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
 )
 
-var baseUser = []User{
-	User{
-		Password: "12345678",
-		Email:    "andres@hotmail.com",
-	},
-	User{
-		Password: "987654321",
-		Email:    "toni@hotmail.com",
-	},
-}
+var baseUser = []User{}
 
 var emailRegexp = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 type User struct {
-	Email    string
-	Password string
+	Email    string `json:"Email"`
+	Password string `json:"Password"`
 	Exito    string
 	BadLogin string
-	// Name        string
-	// NewPassword string
-	// Errors      map[string]string
 }
 
-// func (user User) Validate() bool {
-// 	// if user.Password != baseUser.Password {
-// 	// 	user.Errors["Password"] = "Password does not match"
-// 	// }
-// 	// if user.NewPassword == baseUser {
-// 	// 	user.Errors["PasswordEqual"] = "Password is equal to new password"
-// 	// }
-// 	// if len(user.NewPassword) < 8 {
-// 	// 	user.Errors["PasswordShort"] = "Very short password"
-// 	// }
-// 	// if user.Name == "" {
-// 	// 	user.Errors["Name"] = "Please put your full name"
-// 	// }
-
-// 	// if !emailRegexp.MatchString(user.Email) {
-// 	// 	user.Errors["Email"] = "Your email is invalid"
-// 	// }
-
-// 	return len(user.Errors) == 0
-//}
-
 func main() {
+	JSONFile, err := os.Open("baseUsers.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer JSONFile.Close()
+
+	byteValue, err := ioutil.ReadAll(JSONFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	json.Unmarshal(byteValue, &baseUser)
+
 	http.HandleFunc("/signup", CreateFormHandler)
 	http.HandleFunc("/validate", ValidateCredentialsHandler)
 	http.HandleFunc("/login", CreateLoginHandler)
 	http.HandleFunc("/validate/login/ok", ValidateLoginHandler)
+	http.HandleFunc("/users", TableUsersHandler)
+	http.HandleFunc("/users/delete", DeleteHandler)
+	http.HandleFunc("/users/edit", EditUserHandler)
+	http.HandleFunc("/users/update", ChangeUserHandler)
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	log.Fatal(http.ListenAndServe(":8084", nil))
 }
+
 func CreateFormHandler(w http.ResponseWriter, r *http.Request) {
 	err := Render(w, "static/index.html.tmpl", User{})
 	if err != nil {
 		w.Write([]byte(err.Error()))
 	}
 }
+
 func CreateLoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := Render(w, "static/login.html.tmpl", User{})
 	if err != nil {
@@ -77,11 +64,11 @@ func CreateLoginHandler(w http.ResponseWriter, r *http.Request) {
 func ValidateCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
-
 	user := User{
 		Email:    r.Form.Get("Email"),
 		Password: r.Form.Get("Password"),
 	}
+
 	for i := 0; i < len(baseUser); i++ {
 		if user.Email == baseUser[i].Email {
 			user.BadLogin = "Email already exits"
@@ -89,16 +76,105 @@ func ValidateCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	user.Exito = "Credentials Save"
 	baseUser = append(baseUser, user)
+
+	baseUserJson, err := json.Marshal(baseUser)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
+	err = ioutil.WriteFile("baseUsers.json", baseUserJson, 0644)
 	Render(w, "static/index.html.tmpl", user)
 }
-func Validators(w http.ResponseWriter, r *http.Request) {
-	f, err := os.OpenFile("users.json")
+
+func TableUsersHandler(w http.ResponseWriter, r *http.Request) {
+	Render(w, "static/list.html.tmpl", baseUser)
 }
-func ValidateLoginHandler(w http.ResponseWriter, r *http.Request) {
+
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+
+	email := r.URL.Query().Get("email")
+	index := -1
+
+	for i, user := range baseUser {
+		if user.Email != email {
+			continue
+		}
+
+		index = i
+		break
+	}
+
+	if index >= 0 {
+		baseUser = append(baseUser[:index], baseUser[index+1:]...)
+		//Update disk list
+	}
+
+	baseUserJson, err := json.Marshal(baseUser)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
+	err = ioutil.WriteFile("baseUsers.json", baseUserJson, 0644)
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
+}
+
+func EditUserHandler(w http.ResponseWriter, r *http.Request) {
+
+	email := r.URL.Query().Get("email")
+	u := User{}
+
+	for _, user := range baseUser {
+		if user.Email != email {
+			continue
+		}
+		u = user
+		break
+	}
+
+	if u.Email != "" {
+		Render(w, "static/edit.html.tmpl", u)
+	}
+}
+
+func ChangeUserHandler(w http.ResponseWriter, r *http.Request) {
+
 	r.ParseForm()
 
+	OriginalEmail := r.Form.Get("originalEmail")
+
+	u := User{}
+	index := -1
+
+	for i, user := range baseUser {
+		if user.Email != OriginalEmail {
+			continue
+		}
+		u = user
+		index = i
+		break
+	}
+
+	if index >= 0 {
+		u.Email = r.Form.Get("Email")
+		u.Password = r.Form.Get("Password")
+		baseUser[index] = u
+	}
+
+	baseUserJson, err := json.Marshal(baseUser)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
+	err = ioutil.WriteFile("baseUsers.json", baseUserJson, 0644)
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
+
+}
+
+func ValidateLoginHandler(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseForm()
 	user := User{
 		Email:    r.Form.Get("Email"),
 		Password: r.Form.Get("Password"),
