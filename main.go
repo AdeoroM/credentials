@@ -88,16 +88,9 @@ func ValidateCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 	user.Exito = "Credentials Save"
 	baseUser = append(baseUser, user)
 
-	baseUserJson, err := json.Marshal(baseUser)
-	if err != nil {
-		w.Write([]byte(err.Error()))
-	}
-	err = ioutil.WriteFile("baseUsers.json", baseUserJson, 0644)
-	Render(w, "static/index.html.tmpl", user)
-}
+	ChangeJsonFile(baseUser, "baseUsers.json", w)
 
-func TableUsersHandler(w http.ResponseWriter, r *http.Request) {
-	Render(w, "static/list.html.tmpl", baseUser)
+	Render(w, "static/index.html.tmpl", user)
 }
 
 func CreateLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +119,10 @@ func ValidateLoginHandler(w http.ResponseWriter, r *http.Request) {
 	Render(w, "static/login.html.tmpl", user)
 }
 
+func TableUsersHandler(w http.ResponseWriter, r *http.Request) {
+	Render(w, "static/list.html.tmpl", baseUser)
+}
+
 func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	email := r.URL.Query().Get("email")
@@ -143,13 +140,11 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if index >= 0 {
 		baseUser = append(baseUser[:index], baseUser[index+1:]...)
 	}
-	baseUserJson, err := json.Marshal(baseUser)
-	if err != nil {
-		w.Write([]byte(err.Error()))
-	}
-	err = ioutil.WriteFile("baseUsers.json", baseUserJson, 0644)
+
+	ChangeJsonFile(baseUser, "baseUsers.json", w)
 
 	http.Redirect(w, r, "/users", http.StatusSeeOther)
+
 }
 
 func EditUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -195,12 +190,18 @@ func ChangeUserHandler(w http.ResponseWriter, r *http.Request) {
 		baseUser[index] = u
 	}
 
-	baseUserJson, err := json.Marshal(baseUser)
-	if err != nil {
-		w.Write([]byte(err.Error()))
-	}
-	err = ioutil.WriteFile("baseUsers.json", baseUserJson, 0644)
+	ChangeJsonFile(baseUser, "baseUsers.json", w)
 
 	http.Redirect(w, r, "/users", http.StatusSeeOther)
 
+}
+func ChangeJsonFile(base interface{}, file string, w http.ResponseWriter) error {
+
+	baseUserJson, err := json.Marshal(base)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
+	err = ioutil.WriteFile(file, baseUserJson, 0644)
+
+	return nil
 }
